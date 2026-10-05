@@ -1,0 +1,1072 @@
+{
+  "tool": "cutover-runbook-check",
+  "version": "1.0.0",
+  "input": {
+    "runbook": {
+      "file": "examples/messy/runbook.csv",
+      "kind": "csv",
+      "read": true,
+      "encoding": "utf-8",
+      "steps": 15
+    },
+    "application": {
+      "file": "examples/messy/application.json",
+      "kind": "json",
+      "read": true,
+      "encoding": "utf-8"
+    }
+  },
+  "config": {
+    "file": "examples/config.json",
+    "name": "Brindlecombe cutover review",
+    "requiredPhases": [
+      "backup",
+      "switch",
+      "verify",
+      "rollback",
+      "hypercare"
+    ],
+    "windowPhases": [
+      "freeze",
+      "backup",
+      "migrate-data",
+      "switch",
+      "verify"
+    ],
+    "phaseAliases": {
+      "Snapshot and Seal": "backup"
+    },
+    "minSeverity": "info",
+    "failOn": "error",
+    "rules": [
+      {
+        "id": "missing-phase",
+        "key": "missingPhase",
+        "level": "error",
+        "rule": "a runbook with no step in one of the 5 required phases (backup, switch, verify, rollback and hypercare)"
+      },
+      {
+        "id": "change-without-rollback",
+        "key": "changeWithoutRollback",
+        "level": "error",
+        "rule": "a migrate-data or switch step that names no rollback step, names one that is not in the runbook, or names a step outside the rollback phase"
+      },
+      {
+        "id": "no-backup-before-migrate",
+        "key": "noBackupBeforeMigrate",
+        "level": "error",
+        "rule": "a migrate-data step that depends on no other migrate-data step and on no backup step, directly or through others"
+      },
+      {
+        "id": "missing-owner",
+        "key": "missingOwner",
+        "level": "warning",
+        "rule": "a step with no owner"
+      },
+      {
+        "id": "missing-verification",
+        "key": "missingVerification",
+        "level": "warning",
+        "rule": "a step with no verification"
+      },
+      {
+        "id": "no-go-gate",
+        "key": "noGoGate",
+        "level": "error",
+        "rule": "a first switch step with no go/no-go gate among the steps it depends on, directly or through others"
+      },
+      {
+        "id": "unknown-dependency",
+        "key": "unknownDependency",
+        "level": "error",
+        "rule": "a step whose depends-on names an id that no step has"
+      },
+      {
+        "id": "dependency-cycle",
+        "key": "dependencyCycle",
+        "level": "error",
+        "rule": "steps that depend on each other, directly or through others, so that no order can run them"
+      },
+      {
+        "id": "duplicate-id",
+        "key": "duplicateId",
+        "level": "error",
+        "rule": "a step whose id an earlier step has"
+      },
+      {
+        "id": "critical-path-over-window",
+        "key": "criticalPathOverWindow",
+        "level": "error",
+        "rule": "a critical path over the steps of the freeze, backup, migrate-data, switch and verify phases longer than the downtime window"
+      },
+      {
+        "id": "rollback-over-window",
+        "key": "rollbackOverWindow",
+        "level": "warning",
+        "rule": "rollback steps whose durations add up to more than the downtime window less the critical path"
+      },
+      {
+        "id": "strategy-mismatch",
+        "key": "strategyMismatch",
+        "level": "warning",
+        "rule": "a runbook of a retired application with migrate-data steps, or of a retained application with switch steps"
+      },
+      {
+        "id": "missing-application-field",
+        "key": "missingApplicationField",
+        "level": "warning",
+        "rule": "an application with no name, no migration strategy or no downtime window"
+      },
+      {
+        "id": "missing-business-sign-off",
+        "key": "missingBusinessSignOff",
+        "level": "warning",
+        "rule": "an application with no business sign-off person"
+      },
+      {
+        "id": "missing-data-owner",
+        "key": "missingDataOwner",
+        "level": "warning",
+        "rule": "an application with no data owner"
+      },
+      {
+        "id": "no-communication-plan",
+        "key": "noCommunicationPlan",
+        "level": "error",
+        "rule": "an application whose communication plan is no or not given"
+      },
+      {
+        "id": "invalid-field",
+        "key": null,
+        "level": "error",
+        "rule": "a field of a step or of the application that the tool cannot read"
+      },
+      {
+        "id": "unreadable-file",
+        "key": null,
+        "level": "error",
+        "rule": "a runbook or application file that the tool could not read as UTF-8 or UTF-16 text"
+      },
+      {
+        "id": "unparsable-file",
+        "key": null,
+        "level": "error",
+        "rule": "a runbook or application file that the CSV or JSON reader refuses"
+      }
+    ]
+  },
+  "application": {
+    "name": "Brindlecombe Claims Portal",
+    "strategy": "retire",
+    "strategyText": "Decommission",
+    "downtimeWindowMinutes": 180,
+    "dataOwner": "Claims Operations (Hal Mercer)",
+    "businessSignOff": "",
+    "communicationPlan": false,
+    "file": "examples/messy/application.json",
+    "line": 1,
+    "at": "examples/messy/application.json:1"
+  },
+  "summary": {
+    "phases": [
+      {
+        "phase": "prepare",
+        "steps": 4,
+        "minutes": 50,
+        "inWindow": false,
+        "required": false
+      },
+      {
+        "phase": "freeze",
+        "steps": 3,
+        "minutes": 25,
+        "inWindow": true,
+        "required": false
+      },
+      {
+        "phase": "backup",
+        "steps": 1,
+        "minutes": 40,
+        "inWindow": true,
+        "required": true
+      },
+      {
+        "phase": "migrate-data",
+        "steps": 2,
+        "minutes": 165,
+        "inWindow": true,
+        "required": false
+      },
+      {
+        "phase": "switch",
+        "steps": 2,
+        "minutes": 25,
+        "inWindow": true,
+        "required": true
+      },
+      {
+        "phase": "verify",
+        "steps": 0,
+        "minutes": 0,
+        "inWindow": true,
+        "required": true
+      },
+      {
+        "phase": "rollback",
+        "steps": 3,
+        "minutes": 85,
+        "inWindow": false,
+        "required": true
+      },
+      {
+        "phase": "hypercare",
+        "steps": 0,
+        "minutes": 0,
+        "inWindow": false,
+        "required": true
+      }
+    ],
+    "criticalPath": {
+      "minutes": 200,
+      "steps": [
+        {
+          "id": "F1",
+          "phase": "freeze",
+          "minutes": 10,
+          "line": 6,
+          "action": "Stop the nightly claims import job"
+        },
+        {
+          "id": "M1",
+          "phase": "migrate-data",
+          "minutes": 120,
+          "line": 10,
+          "action": "Copy the claims database to the target server"
+        },
+        {
+          "id": "M2",
+          "phase": "migrate-data",
+          "minutes": 45,
+          "line": 11,
+          "action": "Copy the document store to the target file share"
+        },
+        {
+          "id": "S1",
+          "phase": "switch",
+          "minutes": 15,
+          "line": 12,
+          "action": "Point claims.brindlecombe.test at the target load balancer"
+        },
+        {
+          "id": "S2",
+          "phase": "switch",
+          "minutes": 10,
+          "line": 13,
+          "action": "Start the claims import job on the target"
+        }
+      ]
+    },
+    "totals": {
+      "steps": 15,
+      "phases": 6,
+      "minutes": 390,
+      "criticalPath": 200,
+      "window": 180,
+      "rollback": 85,
+      "left": 0,
+      "cycles": 1,
+      "cycleDependencies": 2
+    }
+  },
+  "steps": [
+    {
+      "id": "P1",
+      "phase": "prepare",
+      "phaseText": "Prepare",
+      "action": "Confirm the target database server is built and patched",
+      "owner": "Infrastructure (Ines Varga)",
+      "dependsOn": [],
+      "durationMinutes": 30,
+      "gate": false,
+      "verification": "Server checklist signed in the change ticket",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 2,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:2",
+      "findings": []
+    },
+    {
+      "id": "P2",
+      "phase": "prepare",
+      "phaseText": "prepare",
+      "action": "Send the outage notice to claims handlers",
+      "owner": "",
+      "dependsOn": [
+        "P1"
+      ],
+      "durationMinutes": 10,
+      "gate": false,
+      "verification": "",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 3,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:3",
+      "findings": [
+        "warning missing-owner",
+        "warning missing-verification"
+      ]
+    },
+    {
+      "id": "P3",
+      "phase": "prepare",
+      "phaseText": "Preparation",
+      "action": "Open the cutover call bridge",
+      "owner": "Service desk (Tom Achebe)",
+      "dependsOn": [
+        "P4"
+      ],
+      "durationMinutes": 5,
+      "gate": false,
+      "verification": "Bridge number posted in the change ticket",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 4,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:4",
+      "findings": [
+        "error dependency-cycle"
+      ]
+    },
+    {
+      "id": "P4",
+      "phase": "prepare",
+      "phaseText": "pre-cutover",
+      "action": "Book the operations room for the night",
+      "owner": "Service desk (Tom Achebe)",
+      "dependsOn": [
+        "P3"
+      ],
+      "durationMinutes": 5,
+      "gate": false,
+      "verification": "Booking shows in the room calendar",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 5,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:5",
+      "findings": []
+    },
+    {
+      "id": "F1",
+      "phase": "freeze",
+      "phaseText": "Change Freeze",
+      "action": "Stop the nightly claims import job",
+      "owner": "Operations (Dana Pryce)",
+      "dependsOn": [
+        "P1"
+      ],
+      "durationMinutes": 10,
+      "gate": false,
+      "verification": "Job shows Disabled in the scheduler",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 6,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:6",
+      "findings": []
+    },
+    {
+      "id": "F1",
+      "phase": "freeze",
+      "phaseText": "freeze",
+      "action": "Pause the outbound payments interface",
+      "owner": "Operations (Dana Pryce)",
+      "dependsOn": [
+        "P1"
+      ],
+      "durationMinutes": 5,
+      "gate": false,
+      "verification": "Interface queue shows Paused",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 7,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:7",
+      "findings": [
+        "error duplicate-id"
+      ]
+    },
+    {
+      "id": "B1",
+      "phase": "backup",
+      "phaseText": "Snapshot and Seal",
+      "action": "Take a full backup of the claims database",
+      "owner": "Database team (Ravi Osei)",
+      "dependsOn": [
+        "F1"
+      ],
+      "durationMinutes": 40,
+      "gate": false,
+      "verification": "Backup restored on the test server and row counts match",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 8,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:8",
+      "findings": []
+    },
+    {
+      "id": "G1",
+      "phase": "freeze",
+      "phaseText": "freeze",
+      "action": "Go/no-go call with the claims business lead, after the backup",
+      "owner": "Claims lead (Hal Mercer)",
+      "dependsOn": [
+        "B1"
+      ],
+      "durationMinutes": 10,
+      "gate": true,
+      "verification": "Decision recorded in the change ticket",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 9,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:9",
+      "findings": []
+    },
+    {
+      "id": "M1",
+      "phase": "migrate-data",
+      "phaseText": "Data Sync",
+      "action": "Copy the claims database to the target server",
+      "owner": "Database team (Ravi Osei)",
+      "dependsOn": [
+        "F1"
+      ],
+      "durationMinutes": 120,
+      "gate": false,
+      "verification": "Row counts and checksums match on both servers",
+      "rollbackStep": "R1",
+      "file": "examples/messy/runbook.csv",
+      "line": 10,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:10",
+      "findings": [
+        "error no-backup-before-migrate",
+        "warning strategy-mismatch"
+      ]
+    },
+    {
+      "id": "M2",
+      "phase": "migrate-data",
+      "phaseText": "migrate-data",
+      "action": "Copy the document store to the target file share",
+      "owner": "Storage team (Ama Lindqvist)",
+      "dependsOn": [
+        "M1"
+      ],
+      "durationMinutes": 45,
+      "gate": false,
+      "verification": "File counts and sizes match",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 11,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:11",
+      "findings": [
+        "error change-without-rollback"
+      ]
+    },
+    {
+      "id": "S1",
+      "phase": "switch",
+      "phaseText": "Cutover",
+      "action": "Point claims.brindlecombe.test at the target load balancer",
+      "owner": "Network team (Lee Marsh)",
+      "dependsOn": [
+        "M2",
+        "S99"
+      ],
+      "durationMinutes": 15,
+      "gate": false,
+      "verification": "DNS answers with the target address",
+      "rollbackStep": "R7",
+      "file": "examples/messy/runbook.csv",
+      "line": 12,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:12",
+      "findings": [
+        "error no-go-gate",
+        "error unknown-dependency",
+        "error change-without-rollback"
+      ]
+    },
+    {
+      "id": "S2",
+      "phase": "switch",
+      "phaseText": "switch",
+      "action": "Start the claims import job on the target",
+      "owner": "Operations (Dana Pryce)",
+      "dependsOn": [
+        "S1"
+      ],
+      "durationMinutes": 10,
+      "gate": false,
+      "verification": "First import batch lands without errors",
+      "rollbackStep": "P1",
+      "file": "examples/messy/runbook.csv",
+      "line": 13,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:13",
+      "findings": [
+        "error critical-path-over-window",
+        "error change-without-rollback"
+      ]
+    },
+    {
+      "id": "R1",
+      "phase": "rollback",
+      "phaseText": "Back-out",
+      "action": "Restore the claims database from the backup on the old server",
+      "owner": "Database team (Ravi Osei)",
+      "dependsOn": [
+        "M1"
+      ],
+      "durationMinutes": 60,
+      "gate": false,
+      "verification": "Row counts match the backup",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 14,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:14",
+      "findings": [
+        "warning rollback-over-window"
+      ]
+    },
+    {
+      "id": "R2",
+      "phase": "rollback",
+      "phaseText": "rollback",
+      "action": "Point claims.brindlecombe.test back at the old load balancer",
+      "owner": "Network team (Lee Marsh)",
+      "dependsOn": [
+        "R1"
+      ],
+      "durationMinutes": 15,
+      "gate": false,
+      "verification": "DNS answers with the old address",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 15,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:15",
+      "findings": []
+    },
+    {
+      "id": "R3",
+      "phase": "rollback",
+      "phaseText": "rollback",
+      "action": "Start the claims import job on the old server",
+      "owner": "Operations (Dana Pryce)",
+      "dependsOn": [
+        "R2"
+      ],
+      "durationMinutes": 10,
+      "gate": false,
+      "verification": "",
+      "rollbackStep": "",
+      "file": "examples/messy/runbook.csv",
+      "line": 16,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:16",
+      "findings": [
+        "warning missing-verification"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "missing-phase",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 1,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:1",
+      "step": "",
+      "phase": null,
+      "found": "the runbook has no step in the verify phase, which is required (backup, switch, verify, rollback and hypercare)",
+      "fix": "add the steps of the phase, each with an owner, a duration and how its success is checked",
+      "basis": [
+        {
+          "text": "a cutover usually freezes new data, takes a final backup that a rollback can use, runs a final data sync, changes the routing and tests before the move is called complete",
+          "source": "Cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html"
+        },
+        {
+          "text": "the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        }
+      ],
+      "own": "the required phases are the requiredPhases of the configuration (backup, switch, verify and rollback by default); a phase counts when one step, read with its phase or an alias of it, is in it; one finding per phase, at the start of the steps"
+    },
+    {
+      "rule": "missing-phase",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 1,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:1",
+      "step": "",
+      "phase": null,
+      "found": "the runbook has no step in the hypercare phase, which is required (backup, switch, verify, rollback and hypercare)",
+      "fix": "add the steps of the phase, each with an owner, a duration and how its success is checked",
+      "basis": [
+        {
+          "text": "a cutover usually freezes new data, takes a final backup that a rollback can use, runs a final data sync, changes the routing and tests before the move is called complete",
+          "source": "Cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html"
+        },
+        {
+          "text": "the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        }
+      ],
+      "own": "the required phases are the requiredPhases of the configuration (backup, switch, verify and rollback by default); a phase counts when one step, read with its phase or an alias of it, is in it; one finding per phase, at the start of the steps"
+    },
+    {
+      "rule": "dependency-cycle",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 4,
+      "column": 71,
+      "at": "examples/messy/runbook.csv:4",
+      "step": "P3",
+      "phase": "prepare",
+      "found": "the steps \"P3\" and \"P4\" depend on each other in a cycle (P3 -> P4 -> P3), so no order can run them",
+      "fix": "break the cycle: decide which step comes first and take the other dependency out",
+      "basis": [
+        {
+          "text": "dependencies are found and mapped before the move, because parts that depend on each other and move apart cause outages",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        },
+        {
+          "text": "a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan",
+          "source": "Pre-cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html"
+        }
+      ],
+      "own": "one finding per cycle, at its first step in the file, with one shortest path round it; a step that depends on itself is a cycle; the dependencies inside a cycle are left out of the critical path"
+    },
+    {
+      "rule": "duplicate-id",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 7,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:7",
+      "step": "F1",
+      "phase": "freeze",
+      "found": "the step id \"F1\" is used again; the step at examples/messy/runbook.csv:6 has it first, and only that one is used for the dependencies",
+      "fix": "give every step its own id",
+      "basis": [
+        {
+          "text": "a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan",
+          "source": "Pre-cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html"
+        }
+      ],
+      "own": "ids are compared exactly; the first step with an id is the one other steps depend on, and each later step with it is reported"
+    },
+    {
+      "rule": "no-backup-before-migrate",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 10,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:10",
+      "step": "M1",
+      "phase": "migrate-data",
+      "found": "the migrate-data step \"M1\" is a first data move, and no backup step comes before it: none of the 2 steps it depends on, directly or through others, is in the backup phase",
+      "fix": "make the first data move depend on a backup step, and test the restore of that backup before the cutover",
+      "basis": [
+        {
+          "text": "a cutover usually freezes new data, takes a final backup that a rollback can use, runs a final data sync, changes the routing and tests before the move is called complete",
+          "source": "Cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html"
+        },
+        {
+          "text": "once new data has reached the target, a rollback may need that data copied back, a dual write, or a restore whose time was measured in a test beforehand",
+          "source": "Cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html"
+        }
+      ],
+      "own": "before means in dependency order: a backup step must be among the steps a first migrate-data step depends on, directly or through others; a migrate-data step that depends on another migrate-data step is not a first one; the order of the rows and the times of the steps are not used"
+    },
+    {
+      "rule": "change-without-rollback",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 11,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:11",
+      "step": "M2",
+      "phase": "migrate-data",
+      "found": "the migrate-data step \"M2\" changes something and names no rollback step",
+      "fix": "name a step of the rollback phase that undoes this change, and add it to the runbook if it is not there",
+      "basis": [
+        {
+          "text": "each step of a migration plan gets a rollback strategy, and the rollback strategies are reviewed and tested from time to time",
+          "source": "Migrate to Google Cloud: Best practices for validating a migration plan (Google Cloud Architecture Center)",
+          "url": "https://docs.cloud.google.com/architecture/migration-to-google-cloud-best-practices"
+        },
+        {
+          "text": "a rollback plan names the checkpoints whose criteria start a rollback, how the rollback treats the data, and the person who decides to fix forward or roll back",
+          "source": "Cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html"
+        },
+        {
+          "text": "the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        }
+      ],
+      "own": "a step of the migrate-data or switch phase changes something, so it must name a rollback step that is in the runbook and in the rollback phase; one finding per change step, saying whether the rollback step is not named, not in the runbook or in another phase"
+    },
+    {
+      "rule": "no-go-gate",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 12,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:12",
+      "step": "S1",
+      "phase": "switch",
+      "found": "the switch step \"S1\" starts the switch phase, and no go/no-go gate comes before it: none of the 4 steps it depends on, directly or through others, is a gate",
+      "fix": "add a go/no-go gate step that the switch depends on, and name who decides and on what criteria",
+      "basis": [
+        {
+          "text": "stakeholders approve the plan and the rollback steps in writing, the authority to roll back is named, and review points are set for go/no-go decisions",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        },
+        {
+          "text": "a rollback plan names the checkpoints whose criteria start a rollback, how the rollback treats the data, and the person who decides to fix forward or roll back",
+          "source": "Cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html"
+        }
+      ],
+      "own": "a switch step that depends on no other switch step starts the switch phase, and a step with the gate set to yes must be among the steps it depends on, directly or through others; a gate that the switch does not depend on does not count"
+    },
+    {
+      "rule": "unknown-dependency",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 12,
+      "column": 96,
+      "at": "examples/messy/runbook.csv:12",
+      "step": "S1",
+      "phase": "switch",
+      "found": "the step \"S1\" depends on \"S99\", which is not in the runbook",
+      "fix": "correct the id, or add the step it names",
+      "basis": [
+        {
+          "text": "dependencies are found and mapped before the move, because parts that depend on each other and move apart cause outages",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        },
+        {
+          "text": "a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan",
+          "source": "Pre-cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html"
+        }
+      ],
+      "own": "ids are compared exactly, letter case included; a dependency on an id that is not in the runbook is left out of the critical path; one finding per step, naming every unknown id"
+    },
+    {
+      "rule": "change-without-rollback",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 12,
+      "column": 144,
+      "at": "examples/messy/runbook.csv:12",
+      "step": "S1",
+      "phase": "switch",
+      "found": "the switch step \"S1\" names the rollback step \"R7\", which is not in the runbook",
+      "fix": "name a step of the rollback phase that undoes this change, and add it to the runbook if it is not there",
+      "basis": [
+        {
+          "text": "each step of a migration plan gets a rollback strategy, and the rollback strategies are reviewed and tested from time to time",
+          "source": "Migrate to Google Cloud: Best practices for validating a migration plan (Google Cloud Architecture Center)",
+          "url": "https://docs.cloud.google.com/architecture/migration-to-google-cloud-best-practices"
+        },
+        {
+          "text": "a rollback plan names the checkpoints whose criteria start a rollback, how the rollback treats the data, and the person who decides to fix forward or roll back",
+          "source": "Cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html"
+        },
+        {
+          "text": "the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        }
+      ],
+      "own": "a step of the migrate-data or switch phase changes something, so it must name a rollback step that is in the runbook and in the rollback phase; one finding per change step, saying whether the rollback step is not named, not in the runbook or in another phase"
+    },
+    {
+      "rule": "critical-path-over-window",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 13,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:13",
+      "step": "S2",
+      "phase": "switch",
+      "found": "the critical path takes 200 minutes, 20 more than the downtime window of 180 minutes: F1 10, M1 120, M2 45, S1 15, S2 10",
+      "fix": "shorten or split the steps on the critical path, run steps side by side where they do not depend on each other, or agree a longer window",
+      "basis": [
+        {
+          "text": "a cutover plan weighs the downtime it needs, what an overrun of the window costs the business and how long a rollback takes, and it documents the rollback procedure",
+          "source": "Pre-cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html"
+        },
+        {
+          "text": "each workload gets a migration method that fits how much downtime it can take, and the acceptable downtime is written down",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        },
+        {
+          "text": "how much downtime each workload can tolerate is found during the assessment, because a move with no downtime needs far more design and coordination",
+          "source": "Migrate to Google Cloud: Best practices for validating a migration plan (Google Cloud Architecture Center)",
+          "url": "https://docs.cloud.google.com/architecture/migration-to-google-cloud-best-practices"
+        }
+      ],
+      "own": "the critical path is the longest chain of dependencies, summed over the durations of the steps of the window phases (windowPhases of the configuration); steps of other phases add nothing; it is compared with the downtime window of the application, which must be given"
+    },
+    {
+      "rule": "change-without-rollback",
+      "level": "error",
+      "file": "examples/messy/runbook.csv",
+      "line": 13,
+      "column": 125,
+      "at": "examples/messy/runbook.csv:13",
+      "step": "S2",
+      "phase": "switch",
+      "found": "the switch step \"S2\" names \"P1\" as its rollback step, but \"P1\" is a prepare step, not a step of the rollback phase",
+      "fix": "name a step of the rollback phase that undoes this change, and add it to the runbook if it is not there",
+      "basis": [
+        {
+          "text": "each step of a migration plan gets a rollback strategy, and the rollback strategies are reviewed and tested from time to time",
+          "source": "Migrate to Google Cloud: Best practices for validating a migration plan (Google Cloud Architecture Center)",
+          "url": "https://docs.cloud.google.com/architecture/migration-to-google-cloud-best-practices"
+        },
+        {
+          "text": "a rollback plan names the checkpoints whose criteria start a rollback, how the rollback treats the data, and the person who decides to fix forward or roll back",
+          "source": "Cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html"
+        },
+        {
+          "text": "the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        }
+      ],
+      "own": "a step of the migrate-data or switch phase changes something, so it must name a rollback step that is in the runbook and in the rollback phase; one finding per change step, saying whether the rollback step is not named, not in the runbook or in another phase"
+    },
+    {
+      "rule": "no-communication-plan",
+      "level": "error",
+      "file": "examples/messy/application.json",
+      "line": 7,
+      "column": 24,
+      "at": "examples/messy/application.json:7",
+      "step": "",
+      "phase": null,
+      "found": "the communication plan of the application is no",
+      "fix": "plan who tells users and support teams about the outage, when, and how they hear that it is over or rolled back",
+      "basis": [
+        {
+          "text": "before the move, a schedule with its timing, the expected effect on the service, who does what and the fallback plans goes to every stakeholder",
+          "source": "Execute migration to cloud (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/execute-migration"
+        }
+      ],
+      "own": "a communication plan of no, or none given, is reported; the tool cannot read the plan itself"
+    },
+    {
+      "rule": "missing-owner",
+      "level": "warning",
+      "file": "examples/messy/runbook.csv",
+      "line": 3,
+      "column": 54,
+      "at": "examples/messy/runbook.csv:3",
+      "step": "P2",
+      "phase": "prepare",
+      "found": "the step \"P2\" has no owner",
+      "fix": "name the person or team who runs the step and answers for it",
+      "basis": [
+        {
+          "text": "a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan",
+          "source": "Pre-cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html"
+        }
+      ],
+      "own": "an owner that is empty or only white space is missing; the tool cannot tell whether the name is a real person or team"
+    },
+    {
+      "rule": "missing-verification",
+      "level": "warning",
+      "file": "examples/messy/runbook.csv",
+      "line": 3,
+      "column": 63,
+      "at": "examples/messy/runbook.csv:3",
+      "step": "P2",
+      "phase": "prepare",
+      "found": "the step \"P2\" does not say how its success is checked",
+      "fix": "write how success is checked: a count that matches, a health check that answers, or a test that passes",
+      "basis": [
+        {
+          "text": "data and the main functions are checked after the data moves and again after traffic moves, and success is announced only after the owners confirm it",
+          "source": "Execute migration to cloud (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/execute-migration"
+        },
+        {
+          "text": "a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan",
+          "source": "Pre-cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html"
+        }
+      ],
+      "own": "a verification that is empty or only white space is missing; the tool cannot tell whether the check written is a good one"
+    },
+    {
+      "rule": "strategy-mismatch",
+      "level": "warning",
+      "file": "examples/messy/runbook.csv",
+      "line": 10,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:10",
+      "step": "M1",
+      "phase": "migrate-data",
+      "found": "the strategy is retire (given as \"Decommission\"), but the runbook moves data in 2 migrate-data steps; a retired application is shut down, not moved",
+      "fix": "correct the strategy of the application, or take the steps out of the runbook",
+      "basis": [
+        {
+          "text": "the seven migration strategies are retire, retain, rehost, relocate, repurchase, replatform and refactor or re-architect; retire shuts an application down and retain keeps it in the source environment for now",
+          "source": "About the migration strategies (AWS Prescriptive Guidance, large migrations)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+        },
+        {
+          "text": "a workload can be retired, retained, rehosted, replatformed, refactored, rearchitected, rebuilt or replaced; retire decommissions it and retain keeps it where it is",
+          "source": "Select your cloud migration strategies (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/plan/select-cloud-migration-strategy"
+        }
+      ],
+      "own": "a retired application is shut down, not moved, so a migrate-data step does not fit it; a retained application stays where it is, so a switch step does not fit it; one finding at the first such step, with their count"
+    },
+    {
+      "rule": "rollback-over-window",
+      "level": "warning",
+      "file": "examples/messy/runbook.csv",
+      "line": 14,
+      "column": 1,
+      "at": "examples/messy/runbook.csv:14",
+      "step": "R1",
+      "phase": "rollback",
+      "found": "the 3 rollback steps take 85 minutes in all, more than the 0 minutes left of the downtime window of 180 minutes after the critical path of 200 minutes",
+      "fix": "plan a rollback that fits what is left of the window, set the go/no-go point early enough that a rollback still fits, or agree a longer window",
+      "basis": [
+        {
+          "text": "a cutover plan weighs the downtime it needs, what an overrun of the window costs the business and how long a rollback takes, and it documents the rollback procedure",
+          "source": "Pre-cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html"
+        },
+        {
+          "text": "once new data has reached the target, a rollback may need that data copied back, a dual write, or a restore whose time was measured in a test beforehand",
+          "source": "Cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html"
+        }
+      ],
+      "own": "the rollback time is the sum of the durations of every step of the rollback phase, as if all of them ran one after the other; what is left of the window is the window less the critical path, and never less than zero"
+    },
+    {
+      "rule": "missing-verification",
+      "level": "warning",
+      "file": "examples/messy/runbook.csv",
+      "line": 16,
+      "column": 91,
+      "at": "examples/messy/runbook.csv:16",
+      "step": "R3",
+      "phase": "rollback",
+      "found": "the step \"R3\" does not say how its success is checked",
+      "fix": "write how success is checked: a count that matches, a health check that answers, or a test that passes",
+      "basis": [
+        {
+          "text": "data and the main functions are checked after the data moves and again after traffic moves, and success is announced only after the owners confirm it",
+          "source": "Execute migration to cloud (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/execute-migration"
+        },
+        {
+          "text": "a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan",
+          "source": "Pre-cutover stage (AWS Prescriptive Guidance, migration cutover)",
+          "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html"
+        }
+      ],
+      "own": "a verification that is empty or only white space is missing; the tool cannot tell whether the check written is a good one"
+    },
+    {
+      "rule": "missing-business-sign-off",
+      "level": "warning",
+      "file": "examples/messy/application.json",
+      "line": 6,
+      "column": 22,
+      "at": "examples/messy/application.json:6",
+      "step": "",
+      "phase": null,
+      "found": "no business sign-off is named for the application",
+      "fix": "name the business owner who signs off the cutover and the rollback plan",
+      "basis": [
+        {
+          "text": "stakeholders approve the plan and the rollback steps in writing, the authority to roll back is named, and review points are set for go/no-go decisions",
+          "source": "Plan your migration (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration"
+        },
+        {
+          "text": "business and technical owners approve before the source is shut down, with a grace period in which a rollback is still possible",
+          "source": "Decommission source workloads after migration to cloud (Microsoft Cloud Adoption Framework)",
+          "url": "https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/decommission-source-workload"
+        }
+      ],
+      "own": "an empty business sign-off is missing; the tool cannot tell whether the person has signed"
+    }
+  ],
+  "totals": {
+    "findings": 18,
+    "byLevel": {
+      "error": 12,
+      "warning": 6,
+      "info": 0
+    },
+    "hidden": 0,
+    "notListed": 0
+  },
+  "result": {
+    "pass": false,
+    "failOn": "error",
+    "failing": 12,
+    "byLevel": {
+      "error": 12,
+      "warning": 6,
+      "info": 0
+    },
+    "text": "FAIL - 12 findings at or above error (12 error, 6 warning)"
+  },
+  "notes": [
+    "2 dependencies inside a cycle are left out of the critical path"
+  ],
+  "notice": "This check reads the runbook as it is written. It runs no step and connects to no system, and a passing result is not a go/no-go decision and not a certification (docs/limits.md)."
+}

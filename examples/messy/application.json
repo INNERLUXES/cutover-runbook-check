@@ -1,0 +1,8 @@
+{
+  "name": "Brindlecombe Claims Portal",
+  "strategy": "Decommission",
+  "downtimeWindowMinutes": 180,
+  "dataOwner": "Claims Operations (Hal Mercer)",
+  "businessSignOff": "",
+  "communicationPlan": "no"
+}

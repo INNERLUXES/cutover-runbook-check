@@ -1,0 +1,22 @@
+{
+  "application": {
+    "name": "Ostrander Seed Order Desk",
+    "strategy": "replatform",
+    "downtimeWindowMinutes": 240,
+    "dataOwner": "Sales Operations (Mina Holt)",
+    "businessSignOff": "Head of Sales (Piet Quarles)",
+    "communicationPlan": true
+  },
+  "steps": [
+    { "id": "P1", "phase": "prepare", "action": "Confirm the target app service and managed database are deployed", "owner": "Platform team (Mina Holt)", "dependsOn": [], "durationMinutes": 20, "gate": false, "verification": "Deployment pipeline run is green" },
+    { "id": "F1", "phase": "freeze", "action": "Put the order desk in read-only mode", "owner": "Operations (Joss Ferrand)", "dependsOn": ["P1"], "durationMinutes": 10, "gate": false, "verification": "Order entry page shows the read-only banner" },
+    { "id": "B1", "phase": "backup", "action": "Take a full backup of the order database", "owner": "Database team (Uma Castell)", "dependsOn": ["F1"], "durationMinutes": 25, "gate": false, "verification": "Backup restored on the test server and order counts match" },
+    { "id": "M1", "phase": "migrate-data", "action": "Copy the order database to the managed database service", "owner": "Database team (Uma Castell)", "dependsOn": ["B1"], "durationMinutes": 60, "gate": false, "verification": "Row counts and checksums match", "rollbackStep": "R2" },
+    { "id": "G1", "phase": "verify", "action": "Go/no-go: the business lead confirms the data checks", "owner": "Head of Sales (Piet Quarles)", "dependsOn": ["M1"], "durationMinutes": 10, "gate": true, "verification": "Decision recorded in the change ticket" },
+    { "id": "S1", "phase": "switch", "action": "Point orders.ostrander.test at the new app service", "owner": "Network team (Ike Brannigan)", "dependsOn": ["G1"], "durationMinutes": 10, "gate": false, "verification": "Health page answers from the new service", "rollbackStep": "R1" },
+    { "id": "V1", "phase": "verify", "action": "Place and cancel a test order end to end", "owner": "Sales Operations (Mina Holt)", "dependsOn": ["S1"], "durationMinutes": 20, "gate": false, "verification": "Test order appears and cancels in the new database" },
+    { "id": "R1", "phase": "rollback", "action": "Point orders.ostrander.test back at the old servers", "owner": "Network team (Ike Brannigan)", "dependsOn": ["S1"], "durationMinutes": 10, "gate": false, "verification": "Health page answers from the old servers" },
+    { "id": "R2", "phase": "rollback", "action": "Turn read-only mode off on the old database", "owner": "Operations (Joss Ferrand)", "dependsOn": ["R1"], "durationMinutes": 5, "gate": false, "verification": "Order entry works on the old servers" },
+    { "id": "H1", "phase": "hypercare", "action": "Watch errors and order volume with extra support cover", "owner": "Service desk (Rhea Dunmore)", "dependsOn": ["V1"], "durationMinutes": 120, "gate": false, "verification": "Error rate stays at its usual level" }
+  ]
+}

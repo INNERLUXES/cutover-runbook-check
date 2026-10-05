@@ -1,0 +1,127 @@
+cutover-runbook-check: examples/messy/runbook.csv
+input: runbook examples/messy/runbook.csv (CSV, UTF-8, 15 steps); application file examples/messy/application.json (JSON, UTF-8)
+config: examples/config.json (Brindlecombe cutover review): required phases backup, switch, verify, rollback and hypercare; window phases freeze, backup, migrate-data, switch and verify; 1 phase alias from the configuration; minimum severity info; fail on error
+rules: missing-phase (error); change-without-rollback (error); no-backup-before-migrate (error); missing-owner (warning); missing-verification (warning); no-go-gate (error); unknown-dependency (error); dependency-cycle (error); duplicate-id (error); critical-path-over-window (error); rollback-over-window (warning); strategy-mismatch (warning); missing-application-field (warning); missing-business-sign-off (warning); missing-data-owner (warning); no-communication-plan (error); invalid-field (error); unreadable-file (error); unparsable-file (error)
+application: Brindlecombe Claims Portal; strategy retire (given as "Decommission"); downtime window 180 minutes; data owner Claims Operations (Hal Mercer); business sign-off none; communication plan no
+steps: 15 in 6 phases, 390 minutes in all; critical path 200 minutes over 5 steps; downtime window 180 minutes, 0 minutes left after the critical path; rollback 85 minutes
+findings: 18 (12 error, 6 warning)
+
+Phases (8)
+
+  phase         steps  minutes  window  required
+  prepare       4      50       no      no
+  freeze        3      25       yes     no
+  backup        1      40       yes     yes
+  migrate-data  2      165      yes     no
+  switch        2      25       yes     yes
+  verify        0      0        yes     yes
+  rollback      3      85       no      yes
+  hypercare     0      0        no      yes
+
+Critical path (5 steps, 200 minutes)
+
+  step  phase         minutes  action
+  F1    freeze        10       Stop the nightly claims import job
+  M1    migrate-data  120      Copy the claims database to the target server
+  M2    migrate-data  45       Copy the document store to the target file share
+  S1    switch        15       Point claims.brindlecombe.test at the target load balancer
+  S2    switch        10       Start the claims import job on the target
+
+Steps (15)
+
+  step  phase         minutes  gate  depends on  rollback  owner                         line
+  P1    prepare       30       -     -           -         Infrastructure (Ines Varga)   2
+  P2    prepare       10       -     P1          -         -                             3
+  P3    prepare       5        -     P4          -         Service desk (Tom Achebe)     4
+  P4    prepare       5        -     P3          -         Service desk (Tom Achebe)     5
+  F1    freeze        10       -     P1          -         Operations (Dana Pryce)       6
+  F1    freeze        5        -     P1          -         Operations (Dana Pryce)       7
+  B1    backup        40       -     F1          -         Database team (Ravi Osei)     8
+  G1    freeze        10       yes   B1          -         Claims lead (Hal Mercer)      9
+  M1    migrate-data  120      -     F1          R1        Database team (Ravi Osei)     10
+  M2    migrate-data  45       -     M1          -         Storage team (Ama Lindqvist)  11
+  S1    switch        15       -     M2, S99     R7        Network team (Lee Marsh)      12
+  S2    switch        10       -     S1          P1        Operations (Dana Pryce)       13
+  R1    rollback      60       -     M1          -         Database team (Ravi Osei)     14
+  R2    rollback      15       -     R1          -         Network team (Lee Marsh)      15
+  R3    rollback      10       -     R2          -         Operations (Dana Pryce)       16
+
+Findings (18)
+
+  ERROR    missing-phase              examples/messy/runbook.csv:1
+           the runbook has no step in the verify phase, which is required (backup, switch, verify, rollback and hypercare)
+           fix: add the steps of the phase, each with an owner, a duration and how its success is checked
+
+  ERROR    missing-phase              examples/messy/runbook.csv:1
+           the runbook has no step in the hypercare phase, which is required (backup, switch, verify, rollback and hypercare)
+           fix: add the steps of the phase, each with an owner, a duration and how its success is checked
+
+  ERROR    dependency-cycle           examples/messy/runbook.csv:4
+           the steps "P3" and "P4" depend on each other in a cycle (P3 -> P4 -> P3), so no order can run them
+           fix: break the cycle: decide which step comes first and take the other dependency out
+
+  ERROR    duplicate-id               examples/messy/runbook.csv:7
+           the step id "F1" is used again; the step at examples/messy/runbook.csv:6 has it first, and only that one is used for the dependencies
+           fix: give every step its own id
+
+  ERROR    no-backup-before-migrate   examples/messy/runbook.csv:10
+           the migrate-data step "M1" is a first data move, and no backup step comes before it: none of the 2 steps it depends on, directly or through others, is in the backup phase
+           fix: make the first data move depend on a backup step, and test the restore of that backup before the cutover
+
+  ERROR    change-without-rollback    examples/messy/runbook.csv:11
+           the migrate-data step "M2" changes something and names no rollback step
+           fix: name a step of the rollback phase that undoes this change, and add it to the runbook if it is not there
+
+  ERROR    no-go-gate                 examples/messy/runbook.csv:12
+           the switch step "S1" starts the switch phase, and no go/no-go gate comes before it: none of the 4 steps it depends on, directly or through others, is a gate
+           fix: add a go/no-go gate step that the switch depends on, and name who decides and on what criteria
+
+  ERROR    unknown-dependency         examples/messy/runbook.csv:12
+           the step "S1" depends on "S99", which is not in the runbook
+           fix: correct the id, or add the step it names
+
+  ERROR    change-without-rollback    examples/messy/runbook.csv:12
+           the switch step "S1" names the rollback step "R7", which is not in the runbook
+           fix: name a step of the rollback phase that undoes this change, and add it to the runbook if it is not there
+
+  ERROR    critical-path-over-window  examples/messy/runbook.csv:13
+           the critical path takes 200 minutes, 20 more than the downtime window of 180 minutes: F1 10, M1 120, M2 45, S1 15, S2 10
+           fix: shorten or split the steps on the critical path, run steps side by side where they do not depend on each other, or agree a longer window
+
+  ERROR    change-without-rollback    examples/messy/runbook.csv:13
+           the switch step "S2" names "P1" as its rollback step, but "P1" is a prepare step, not a step of the rollback phase
+           fix: name a step of the rollback phase that undoes this change, and add it to the runbook if it is not there
+
+  ERROR    no-communication-plan      examples/messy/application.json:7
+           the communication plan of the application is no
+           fix: plan who tells users and support teams about the outage, when, and how they hear that it is over or rolled back
+
+  WARNING  missing-owner              examples/messy/runbook.csv:3
+           the step "P2" has no owner
+           fix: name the person or team who runs the step and answers for it
+
+  WARNING  missing-verification       examples/messy/runbook.csv:3
+           the step "P2" does not say how its success is checked
+           fix: write how success is checked: a count that matches, a health check that answers, or a test that passes
+
+  WARNING  strategy-mismatch          examples/messy/runbook.csv:10
+           the strategy is retire (given as "Decommission"), but the runbook moves data in 2 migrate-data steps; a retired application is shut down, not moved
+           fix: correct the strategy of the application, or take the steps out of the runbook
+
+  WARNING  rollback-over-window       examples/messy/runbook.csv:14
+           the 3 rollback steps take 85 minutes in all, more than the 0 minutes left of the downtime window of 180 minutes after the critical path of 200 minutes
+           fix: plan a rollback that fits what is left of the window, set the go/no-go point early enough that a rollback still fits, or agree a longer window
+
+  WARNING  missing-verification       examples/messy/runbook.csv:16
+           the step "R3" does not say how its success is checked
+           fix: write how success is checked: a count that matches, a health check that answers, or a test that passes
+
+  WARNING  missing-business-sign-off  examples/messy/application.json:6
+           no business sign-off is named for the application
+           fix: name the business owner who signs off the cutover and the rollback plan
+
+note: 2 dependencies inside a cycle are left out of the critical path
+
+This check reads the runbook as it is written. It runs no step and connects to no system, and a passing result is not a go/no-go decision and not a certification (docs/limits.md).
+
+RESULT: FAIL - 12 findings at or above error (12 error, 6 warning)

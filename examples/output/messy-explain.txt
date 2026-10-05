@@ -1,0 +1,200 @@
+cutover-runbook-check: examples/messy/runbook.csv
+input: runbook examples/messy/runbook.csv (CSV, UTF-8, 15 steps); application file examples/messy/application.json (JSON, UTF-8)
+config: examples/config.json (Brindlecombe cutover review): required phases backup, switch, verify, rollback and hypercare; window phases freeze, backup, migrate-data, switch and verify; 1 phase alias from the configuration; minimum severity info; fail on error
+rules: missing-phase (error); change-without-rollback (error); no-backup-before-migrate (error); missing-owner (warning); missing-verification (warning); no-go-gate (error); unknown-dependency (error); dependency-cycle (error); duplicate-id (error); critical-path-over-window (error); rollback-over-window (warning); strategy-mismatch (warning); missing-application-field (warning); missing-business-sign-off (warning); missing-data-owner (warning); no-communication-plan (error); invalid-field (error); unreadable-file (error); unparsable-file (error)
+application: Brindlecombe Claims Portal; strategy retire (given as "Decommission"); downtime window 180 minutes; data owner Claims Operations (Hal Mercer); business sign-off none; communication plan no
+steps: 15 in 6 phases, 390 minutes in all; critical path 200 minutes over 5 steps; downtime window 180 minutes, 0 minutes left after the critical path; rollback 85 minutes
+findings: 18 (12 error, 6 warning)
+
+Phases (8)
+
+  phase         steps  minutes  window  required
+  prepare       4      50       no      no
+  freeze        3      25       yes     no
+  backup        1      40       yes     yes
+  migrate-data  2      165      yes     no
+  switch        2      25       yes     yes
+  verify        0      0        yes     yes
+  rollback      3      85       no      yes
+  hypercare     0      0        no      yes
+
+Critical path (5 steps, 200 minutes)
+
+  step  phase         minutes  action
+  F1    freeze        10       Stop the nightly claims import job
+  M1    migrate-data  120      Copy the claims database to the target server
+  M2    migrate-data  45       Copy the document store to the target file share
+  S1    switch        15       Point claims.brindlecombe.test at the target load balancer
+  S2    switch        10       Start the claims import job on the target
+
+Steps (15)
+
+  step  phase         minutes  gate  depends on  rollback  owner                         line
+  P1    prepare       30       -     -           -         Infrastructure (Ines Varga)   2
+  P2    prepare       10       -     P1          -         -                             3
+  P3    prepare       5        -     P4          -         Service desk (Tom Achebe)     4
+  P4    prepare       5        -     P3          -         Service desk (Tom Achebe)     5
+  F1    freeze        10       -     P1          -         Operations (Dana Pryce)       6
+  F1    freeze        5        -     P1          -         Operations (Dana Pryce)       7
+  B1    backup        40       -     F1          -         Database team (Ravi Osei)     8
+  G1    freeze        10       yes   B1          -         Claims lead (Hal Mercer)      9
+  M1    migrate-data  120      -     F1          R1        Database team (Ravi Osei)     10
+  M2    migrate-data  45       -     M1          -         Storage team (Ama Lindqvist)  11
+  S1    switch        15       -     M2, S99     R7        Network team (Lee Marsh)      12
+  S2    switch        10       -     S1          P1        Operations (Dana Pryce)       13
+  R1    rollback      60       -     M1          -         Database team (Ravi Osei)     14
+  R2    rollback      15       -     R1          -         Network team (Lee Marsh)      15
+  R3    rollback      10       -     R2          -         Operations (Dana Pryce)       16
+
+Findings (18)
+
+  ERROR    missing-phase              examples/messy/runbook.csv:1
+           the runbook has no step in the verify phase, which is required (backup, switch, verify, rollback and hypercare)
+           fix: add the steps of the phase, each with an owner, a duration and how its success is checked
+           rule: a runbook with no step in one of the 5 required phases (backup, switch, verify, rollback and hypercare)
+           basis: a cutover usually freezes new data, takes a final backup that a rollback can use, runs a final data sync, changes the routing and tests before the move is called complete (Cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html)
+           basis: the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           the tool's own choice: the required phases are the requiredPhases of the configuration (backup, switch, verify and rollback by default); a phase counts when one step, read with its phase or an alias of it, is in it; one finding per phase, at the start of the steps
+
+  ERROR    missing-phase              examples/messy/runbook.csv:1
+           the runbook has no step in the hypercare phase, which is required (backup, switch, verify, rollback and hypercare)
+           fix: add the steps of the phase, each with an owner, a duration and how its success is checked
+           rule: a runbook with no step in one of the 5 required phases (backup, switch, verify, rollback and hypercare)
+           basis: a cutover usually freezes new data, takes a final backup that a rollback can use, runs a final data sync, changes the routing and tests before the move is called complete (Cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html)
+           basis: the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           the tool's own choice: the required phases are the requiredPhases of the configuration (backup, switch, verify and rollback by default); a phase counts when one step, read with its phase or an alias of it, is in it; one finding per phase, at the start of the steps
+
+  ERROR    dependency-cycle           examples/messy/runbook.csv:4
+           the steps "P3" and "P4" depend on each other in a cycle (P3 -> P4 -> P3), so no order can run them
+           fix: break the cycle: decide which step comes first and take the other dependency out
+           rule: steps that depend on each other, directly or through others, so that no order can run them
+           basis: dependencies are found and mapped before the move, because parts that depend on each other and move apart cause outages (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           basis: a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan (Pre-cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html)
+           the tool's own choice: one finding per cycle, at its first step in the file, with one shortest path round it; a step that depends on itself is a cycle; the dependencies inside a cycle are left out of the critical path
+
+  ERROR    duplicate-id               examples/messy/runbook.csv:7
+           the step id "F1" is used again; the step at examples/messy/runbook.csv:6 has it first, and only that one is used for the dependencies
+           fix: give every step its own id
+           rule: a step whose id an earlier step has
+           basis: a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan (Pre-cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html)
+           the tool's own choice: ids are compared exactly; the first step with an id is the one other steps depend on, and each later step with it is reported
+
+  ERROR    no-backup-before-migrate   examples/messy/runbook.csv:10
+           the migrate-data step "M1" is a first data move, and no backup step comes before it: none of the 2 steps it depends on, directly or through others, is in the backup phase
+           fix: make the first data move depend on a backup step, and test the restore of that backup before the cutover
+           rule: a migrate-data step that depends on no other migrate-data step and on no backup step, directly or through others
+           basis: a cutover usually freezes new data, takes a final backup that a rollback can use, runs a final data sync, changes the routing and tests before the move is called complete (Cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html)
+           basis: once new data has reached the target, a rollback may need that data copied back, a dual write, or a restore whose time was measured in a test beforehand (Cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html)
+           the tool's own choice: before means in dependency order: a backup step must be among the steps a first migrate-data step depends on, directly or through others; a migrate-data step that depends on another migrate-data step is not a first one; the order of the rows and the times of the steps are not used
+
+  ERROR    change-without-rollback    examples/messy/runbook.csv:11
+           the migrate-data step "M2" changes something and names no rollback step
+           fix: name a step of the rollback phase that undoes this change, and add it to the runbook if it is not there
+           rule: a migrate-data or switch step that names no rollback step, names one that is not in the runbook, or names a step outside the rollback phase
+           basis: each step of a migration plan gets a rollback strategy, and the rollback strategies are reviewed and tested from time to time (Migrate to Google Cloud: Best practices for validating a migration plan (Google Cloud Architecture Center), https://docs.cloud.google.com/architecture/migration-to-google-cloud-best-practices)
+           basis: a rollback plan names the checkpoints whose criteria start a rollback, how the rollback treats the data, and the person who decides to fix forward or roll back (Cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html)
+           basis: the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           the tool's own choice: a step of the migrate-data or switch phase changes something, so it must name a rollback step that is in the runbook and in the rollback phase; one finding per change step, saying whether the rollback step is not named, not in the runbook or in another phase
+
+  ERROR    no-go-gate                 examples/messy/runbook.csv:12
+           the switch step "S1" starts the switch phase, and no go/no-go gate comes before it: none of the 4 steps it depends on, directly or through others, is a gate
+           fix: add a go/no-go gate step that the switch depends on, and name who decides and on what criteria
+           rule: a first switch step with no go/no-go gate among the steps it depends on, directly or through others
+           basis: stakeholders approve the plan and the rollback steps in writing, the authority to roll back is named, and review points are set for go/no-go decisions (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           basis: a rollback plan names the checkpoints whose criteria start a rollback, how the rollback treats the data, and the person who decides to fix forward or roll back (Cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html)
+           the tool's own choice: a switch step that depends on no other switch step starts the switch phase, and a step with the gate set to yes must be among the steps it depends on, directly or through others; a gate that the switch does not depend on does not count
+
+  ERROR    unknown-dependency         examples/messy/runbook.csv:12
+           the step "S1" depends on "S99", which is not in the runbook
+           fix: correct the id, or add the step it names
+           rule: a step whose depends-on names an id that no step has
+           basis: dependencies are found and mapped before the move, because parts that depend on each other and move apart cause outages (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           basis: a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan (Pre-cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html)
+           the tool's own choice: ids are compared exactly, letter case included; a dependency on an id that is not in the runbook is left out of the critical path; one finding per step, naming every unknown id
+
+  ERROR    change-without-rollback    examples/messy/runbook.csv:12
+           the switch step "S1" names the rollback step "R7", which is not in the runbook
+           fix: name a step of the rollback phase that undoes this change, and add it to the runbook if it is not there
+           rule: a migrate-data or switch step that names no rollback step, names one that is not in the runbook, or names a step outside the rollback phase
+           basis: each step of a migration plan gets a rollback strategy, and the rollback strategies are reviewed and tested from time to time (Migrate to Google Cloud: Best practices for validating a migration plan (Google Cloud Architecture Center), https://docs.cloud.google.com/architecture/migration-to-google-cloud-best-practices)
+           basis: a rollback plan names the checkpoints whose criteria start a rollback, how the rollback treats the data, and the person who decides to fix forward or roll back (Cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html)
+           basis: the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           the tool's own choice: a step of the migrate-data or switch phase changes something, so it must name a rollback step that is in the runbook and in the rollback phase; one finding per change step, saying whether the rollback step is not named, not in the runbook or in another phase
+
+  ERROR    critical-path-over-window  examples/messy/runbook.csv:13
+           the critical path takes 200 minutes, 20 more than the downtime window of 180 minutes: F1 10, M1 120, M2 45, S1 15, S2 10
+           fix: shorten or split the steps on the critical path, run steps side by side where they do not depend on each other, or agree a longer window
+           rule: a critical path over the steps of the freeze, backup, migrate-data, switch and verify phases longer than the downtime window
+           basis: a cutover plan weighs the downtime it needs, what an overrun of the window costs the business and how long a rollback takes, and it documents the rollback procedure (Pre-cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html)
+           basis: each workload gets a migration method that fits how much downtime it can take, and the acceptable downtime is written down (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           basis: how much downtime each workload can tolerate is found during the assessment, because a move with no downtime needs far more design and coordination (Migrate to Google Cloud: Best practices for validating a migration plan (Google Cloud Architecture Center), https://docs.cloud.google.com/architecture/migration-to-google-cloud-best-practices)
+           the tool's own choice: the critical path is the longest chain of dependencies, summed over the durations of the steps of the window phases (windowPhases of the configuration); steps of other phases add nothing; it is compared with the downtime window of the application, which must be given
+
+  ERROR    change-without-rollback    examples/messy/runbook.csv:13
+           the switch step "S2" names "P1" as its rollback step, but "P1" is a prepare step, not a step of the rollback phase
+           fix: name a step of the rollback phase that undoes this change, and add it to the runbook if it is not there
+           rule: a migrate-data or switch step that names no rollback step, names one that is not in the runbook, or names a step outside the rollback phase
+           basis: each step of a migration plan gets a rollback strategy, and the rollback strategies are reviewed and tested from time to time (Migrate to Google Cloud: Best practices for validating a migration plan (Google Cloud Architecture Center), https://docs.cloud.google.com/architecture/migration-to-google-cloud-best-practices)
+           basis: a rollback plan names the checkpoints whose criteria start a rollback, how the rollback treats the data, and the person who decides to fix forward or roll back (Cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html)
+           basis: the criteria and steps of a rollback are set before the migration starts, name the conditions that trigger it, and are tested (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           the tool's own choice: a step of the migrate-data or switch phase changes something, so it must name a rollback step that is in the runbook and in the rollback phase; one finding per change step, saying whether the rollback step is not named, not in the runbook or in another phase
+
+  ERROR    no-communication-plan      examples/messy/application.json:7
+           the communication plan of the application is no
+           fix: plan who tells users and support teams about the outage, when, and how they hear that it is over or rolled back
+           rule: an application whose communication plan is no or not given
+           basis: before the move, a schedule with its timing, the expected effect on the service, who does what and the fallback plans goes to every stakeholder (Execute migration to cloud (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/execute-migration)
+           the tool's own choice: a communication plan of no, or none given, is reported; the tool cannot read the plan itself
+
+  WARNING  missing-owner              examples/messy/runbook.csv:3
+           the step "P2" has no owner
+           fix: name the person or team who runs the step and answers for it
+           rule: a step with no owner
+           basis: a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan (Pre-cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html)
+           the tool's own choice: an owner that is empty or only white space is missing; the tool cannot tell whether the name is a real person or team
+
+  WARNING  missing-verification       examples/messy/runbook.csv:3
+           the step "P2" does not say how its success is checked
+           fix: write how success is checked: a count that matches, a health check that answers, or a test that passes
+           rule: a step with no verification
+           basis: data and the main functions are checked after the data moves and again after traffic moves, and success is announced only after the owners confirm it (Execute migration to cloud (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/execute-migration)
+           basis: a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan (Pre-cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html)
+           the tool's own choice: a verification that is empty or only white space is missing; the tool cannot tell whether the check written is a good one
+
+  WARNING  strategy-mismatch          examples/messy/runbook.csv:10
+           the strategy is retire (given as "Decommission"), but the runbook moves data in 2 migrate-data steps; a retired application is shut down, not moved
+           fix: correct the strategy of the application, or take the steps out of the runbook
+           rule: a runbook of a retired application with migrate-data steps, or of a retained application with switch steps
+           basis: the seven migration strategies are retire, retain, rehost, relocate, repurchase, replatform and refactor or re-architect; retire shuts an application down and retain keeps it in the source environment for now (About the migration strategies (AWS Prescriptive Guidance, large migrations), https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html)
+           basis: a workload can be retired, retained, rehosted, replatformed, refactored, rearchitected, rebuilt or replaced; retire decommissions it and retain keeps it where it is (Select your cloud migration strategies (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/plan/select-cloud-migration-strategy)
+           the tool's own choice: a retired application is shut down, not moved, so a migrate-data step does not fit it; a retained application stays where it is, so a switch step does not fit it; one finding at the first such step, with their count
+
+  WARNING  rollback-over-window       examples/messy/runbook.csv:14
+           the 3 rollback steps take 85 minutes in all, more than the 0 minutes left of the downtime window of 180 minutes after the critical path of 200 minutes
+           fix: plan a rollback that fits what is left of the window, set the go/no-go point early enough that a rollback still fits, or agree a longer window
+           rule: rollback steps whose durations add up to more than the downtime window less the critical path
+           basis: a cutover plan weighs the downtime it needs, what an overrun of the window costs the business and how long a rollback takes, and it documents the rollback procedure (Pre-cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html)
+           basis: once new data has reached the target, a rollback may need that data copied back, a dual write, or a restore whose time was measured in a test beforehand (Cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/cutover-stage.html)
+           the tool's own choice: the rollback time is the sum of the durations of every step of the rollback phase, as if all of them ran one after the other; what is left of the window is the window less the critical path, and never less than zero
+
+  WARNING  missing-verification       examples/messy/runbook.csv:16
+           the step "R3" does not say how its success is checked
+           fix: write how success is checked: a count that matches, a health check that answers, or a test that passes
+           rule: a step with no verification
+           basis: data and the main functions are checked after the data moves and again after traffic moves, and success is announced only after the owners confirm it (Execute migration to cloud (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/execute-migration)
+           basis: a cutover runbook lists every task with its owner, its place in the sequence and its planned start and end, so the teams follow one plan (Pre-cutover stage (AWS Prescriptive Guidance, migration cutover), https://docs.aws.amazon.com/prescriptive-guidance/latest/best-practices-migration-cutover/pre-cutover-stage.html)
+           the tool's own choice: a verification that is empty or only white space is missing; the tool cannot tell whether the check written is a good one
+
+  WARNING  missing-business-sign-off  examples/messy/application.json:6
+           no business sign-off is named for the application
+           fix: name the business owner who signs off the cutover and the rollback plan
+           rule: an application with no business sign-off person
+           basis: stakeholders approve the plan and the rollback steps in writing, the authority to roll back is named, and review points are set for go/no-go decisions (Plan your migration (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/plan-migration)
+           basis: business and technical owners approve before the source is shut down, with a grace period in which a rollback is still possible (Decommission source workloads after migration to cloud (Microsoft Cloud Adoption Framework), https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/migrate/decommission-source-workload)
+           the tool's own choice: an empty business sign-off is missing; the tool cannot tell whether the person has signed
+
+note: 2 dependencies inside a cycle are left out of the critical path
+
+This check reads the runbook as it is written. It runs no step and connects to no system, and a passing result is not a go/no-go decision and not a certification (docs/limits.md).
+
+RESULT: FAIL - 12 findings at or above error (12 error, 6 warning)

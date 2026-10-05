@@ -1,0 +1,51 @@
+cutover-runbook-check: examples/clean/runbook.json
+input: runbook examples/clean/runbook.json (JSON, UTF-8, 10 steps); no application file
+config: built-in defaults: required phases backup, switch, verify and rollback; window phases freeze, backup, migrate-data, switch and verify; minimum severity info; fail on error
+rules: missing-phase (error); change-without-rollback (error); no-backup-before-migrate (error); missing-owner (warning); missing-verification (warning); no-go-gate (error); unknown-dependency (error); dependency-cycle (error); duplicate-id (error); critical-path-over-window (error); rollback-over-window (warning); strategy-mismatch (warning); missing-application-field (warning); missing-business-sign-off (warning); missing-data-owner (warning); no-communication-plan (warning); invalid-field (error); unreadable-file (error); unparsable-file (error)
+application: Ostrander Seed Order Desk; strategy replatform; downtime window 240 minutes; data owner Sales Operations (Mina Holt); business sign-off Head of Sales (Piet Quarles); communication plan yes
+steps: 10 in 8 phases, 290 minutes in all; critical path 135 minutes over 6 steps; downtime window 240 minutes, 105 minutes left after the critical path; rollback 15 minutes
+findings: 0
+
+Phases (8)
+
+  phase         steps  minutes  window  required
+  prepare       1      20       no      no
+  freeze        1      10       yes     no
+  backup        1      25       yes     yes
+  migrate-data  1      60       yes     no
+  switch        1      10       yes     yes
+  verify        2      30       yes     yes
+  rollback      2      15       no      yes
+  hypercare     1      120      no      no
+
+Critical path (6 steps, 135 minutes)
+
+  step  phase         minutes  action
+  F1    freeze        10       Put the order desk in read-only mode
+  B1    backup        25       Take a full backup of the order database
+  M1    migrate-data  60       Copy the order database to the managed database service
+  G1    verify        10       Go/no-go: the business lead confirms the data checks
+  S1    switch        10       Point orders.ostrander.test at the new app service
+  V1    verify        20       Place and cancel a test order end to end
+
+Steps (10)
+
+  step  phase         minutes  gate  depends on  rollback  owner                         line
+  P1    prepare       20       -     -           -         Platform team (Mina Holt)     11
+  F1    freeze        10       -     P1          -         Operations (Joss Ferrand)     12
+  B1    backup        25       -     F1          -         Database team (Uma Castell)   13
+  M1    migrate-data  60       -     B1          R2        Database team (Uma Castell)   14
+  G1    verify        10       yes   M1          -         Head of Sales (Piet Quarles)  15
+  S1    switch        10       -     G1          R1        Network team (Ike Brannigan)  16
+  V1    verify        20       -     S1          -         Sales Operations (Mina Holt)  17
+  R1    rollback      10       -     S1          -         Network team (Ike Brannigan)  18
+  R2    rollback      5        -     R1          -         Operations (Joss Ferrand)     19
+  H1    hypercare     120      -     V1          -         Service desk (Rhea Dunmore)   20
+
+Findings (0)
+
+  none
+
+This check reads the runbook as it is written. It runs no step and connects to no system, and a passing result is not a go/no-go decision and not a certification (docs/limits.md).
+
+RESULT: PASS - no finding at or above error

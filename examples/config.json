@@ -1,0 +1,6 @@
+{
+  "name": "Brindlecombe cutover review",
+  "requiredPhases": ["backup", "switch", "verify", "rollback", "hypercare"],
+  "phaseAliases": { "Snapshot and Seal": "backup" },
+  "rules": { "noCommunicationPlan": "error" }
+}

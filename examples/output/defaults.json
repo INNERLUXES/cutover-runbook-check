@@ -1,0 +1,37 @@
+{
+  "name": "built-in defaults",
+  "rules": {
+    "missingPhase": "error",
+    "changeWithoutRollback": "error",
+    "noBackupBeforeMigrate": "error",
+    "missingOwner": "warning",
+    "missingVerification": "warning",
+    "noGoGate": "error",
+    "unknownDependency": "error",
+    "dependencyCycle": "error",
+    "duplicateId": "error",
+    "criticalPathOverWindow": "error",
+    "rollbackOverWindow": "warning",
+    "strategyMismatch": "warning",
+    "missingApplicationField": "warning",
+    "missingBusinessSignOff": "warning",
+    "missingDataOwner": "warning",
+    "noCommunicationPlan": "warning"
+  },
+  "requiredPhases": [
+    "backup",
+    "switch",
+    "verify",
+    "rollback"
+  ],
+  "windowPhases": [
+    "freeze",
+    "backup",
+    "migrate-data",
+    "switch",
+    "verify"
+  ],
+  "phaseAliases": {},
+  "minSeverity": "info",
+  "failOn": "error"
+}

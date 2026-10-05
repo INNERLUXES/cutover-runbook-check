@@ -1,0 +1,16 @@
+Step ID,Phase,Action,Owner,Depends On,Duration (min),Go/No-Go,Verification,Rollback
+P1,Prepare,Confirm the target database server is built and patched,Infrastructure (Ines Varga),,30,N,Server checklist signed in the change ticket,
+P2,prepare,Send the outage notice to claims handlers,,P1,10,N,,
+P3,Preparation,Open the cutover call bridge,Service desk (Tom Achebe),P4,5,N,Bridge number posted in the change ticket,
+P4,pre-cutover,Book the operations room for the night,Service desk (Tom Achebe),P3,5,N,Booking shows in the room calendar,
+F1,Change Freeze,Stop the nightly claims import job,Operations (Dana Pryce),P1,10,N,Job shows Disabled in the scheduler,
+F1,freeze,Pause the outbound payments interface,Operations (Dana Pryce),P1,5,N,Interface queue shows Paused,
+B1,Snapshot and Seal,Take a full backup of the claims database,Database team (Ravi Osei),F1,40,N,Backup restored on the test server and row counts match,
+G1,freeze,"Go/no-go call with the claims business lead, after the backup",Claims lead (Hal Mercer),B1,10,Y,Decision recorded in the change ticket,
+M1,Data Sync,Copy the claims database to the target server,Database team (Ravi Osei),F1,120,N,Row counts and checksums match on both servers,R1
+M2,migrate-data,Copy the document store to the target file share,Storage team (Ama Lindqvist),M1,45,N,File counts and sizes match,
+S1,Cutover,Point claims.brindlecombe.test at the target load balancer,Network team (Lee Marsh),M2;S99,15,N,DNS answers with the target address,R7
+S2,switch,Start the claims import job on the target,Operations (Dana Pryce),S1,10,N,First import batch lands without errors,P1
+R1,Back-out,Restore the claims database from the backup on the old server,Database team (Ravi Osei),M1,60,N,Row counts match the backup,
+R2,rollback,Point claims.brindlecombe.test back at the old load balancer,Network team (Lee Marsh),R1,15,N,DNS answers with the old address,
+R3,rollback,Start the claims import job on the old server,Operations (Dana Pryce),R2,10,N,,
