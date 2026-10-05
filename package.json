@@ -1,0 +1,51 @@
+{
+  "name": "cutover-runbook-check",
+  "version": "1.0.0",
+  "description": "Application migration cutover runbook check: reads the per-application cutover runbook a team follows on migration day, as JSON or as CSV with an application file, and reports what is missing or risky before the move: required phases with no step, change steps with no rollback step, no backup before the first data move, steps with no owner or no check of success, no go/no-go gate before the switch, unknown dependencies, dependency cycles and duplicate ids, a critical path longer than the downtime window, a rollback that does not fit what is left of it, a strategy of the 7 Rs that does not match the steps, and a missing business sign-off, data owner or communication plan, with minutes per phase and the critical path. Text, JSON, CSV and GitHub annotation output, exit codes for a pipeline, no dependencies.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "cutover-runbook-check": "bin/cutover-runbook-check.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "docs",
+    "examples",
+    "research",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage \"test/*.test.js\"",
+    "check": "node tools/check.mjs",
+    "example": "node tools/example.mjs"
+  },
+  "keywords": [
+    "application-migration",
+    "cloud-migration",
+    "cutover",
+    "runbook",
+    "rollback",
+    "migration-planning",
+    "go-no-go",
+    "critical-path",
+    "downtime",
+    "7rs",
+    "cli"
+  ],
+  "author": "INNERLUXES <info@innerluxes.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/INNERLUXES/cutover-runbook-check.git"
+  },
+  "homepage": "https://innerluxes.dev/application/migration/services"
+}
